@@ -10,7 +10,7 @@ class TagsController < ApplicationController
   vary_by -> { public_fetch_mode? ? 'Accept, Accept-Language, Cookie' : 'Accept, Accept-Language, Cookie, Signature' }
 
   before_action :require_account_signature!, if: -> { request.format == :json && authorized_fetch_mode? }
-  before_action :authenticate_user!, if: -> { limited_federation_mode? || require_auth? }
+  before_action :authenticate_user!, if: -> { limited_federation_mode? || request.format == :html }
   before_action :set_local
   before_action :set_tag
   before_action :set_statuses, if: -> { request.format == :rss }
@@ -35,16 +35,6 @@ class TagsController < ApplicationController
   end
 
   private
-
-  # Federated (ActivityPub JSON) fetches must stay open, or remote servers
-  # can no longer resolve/follow local hashtags. Only the human-facing
-  # HTML page and the RSS feed (the two scraper-friendly surfaces) are
-  # gated by the same setting that already protects the tag timeline API.
-  def require_auth?
-    return false if request.format == :json
-
-    Setting.local_topic_feed_access != 'public' || Setting.remote_topic_feed_access != 'public'
-  end
 
   def set_tag
     @tag = Tag.usable.find_normalized!(params[:id])

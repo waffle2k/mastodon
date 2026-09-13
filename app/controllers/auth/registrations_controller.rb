@@ -91,7 +91,13 @@ class Auth::RegistrationsController < Devise::RegistrationsController
   end
 
   def check_enabled_registrations
-    redirect_to new_user_session_path, alert: I18n.t('devise.failure.closed_registrations', email: Setting.site_contact_email) unless allowed_registration?(request.remote_ip, @invite)
+    # yttrx: this runs for both :new (rendering the form) and :create
+    # (submitting it). Only the submission waits on welcomebot's reputation
+    # lookup; the form render fires it and moves on, so a page real users load
+    # doesn't pay for the round trip. See app/lib/welcomebot_reputation.rb.
+    reputation = request.get? ? :async : :blocking
+
+    redirect_to new_user_session_path, alert: I18n.t('devise.failure.closed_registrations', email: Setting.site_contact_email) unless allowed_registration?(request.remote_ip, @invite, reputation: reputation)
   end
 
   def invite_code
